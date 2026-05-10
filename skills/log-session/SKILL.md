@@ -1,0 +1,76 @@
+---
+name: log-session
+description: Write a session journal at end of a development session — tickets delivered, challenges and mitigations, insights, metrics, and what's next. Saved to reports/session-journals/.
+---
+
+# Log Session
+
+Write a session journal for the current development session and save it to `reports/session-journals/YYYY-MM-DD.md`.
+
+If a journal already exists for today's date, append a session number suffix (e.g., `2026-02-15-2.md`).
+
+## What to Capture
+
+### 1. Session Summary (2-3 sentences)
+High-level narrative of what the session accomplished and its strategic significance.
+
+### 2. Tickets Delivered
+For each ticket completed (merged to main) during this session:
+
+| Field | Description |
+|-------|-------------|
+| Ticket # and title | Issue number and short description |
+| PR # | Pull request number |
+| What changed | 1-2 sentence summary of the implementation |
+| Files touched | Key files modified (not exhaustive) |
+| Tests added | Count and nature of new tests |
+
+### 3. Tickets In Review
+Same format as above, but for PRs that are created and reviewed but not yet merged.
+
+### 4. Challenges and Mitigations
+Document every significant obstacle encountered and how it was resolved:
+
+| Field | Description |
+|-------|-------------|
+| Challenge | What went wrong or blocked progress |
+| Root cause | Why it happened |
+| Mitigation | How it was resolved |
+| Prevention | What would prevent this in the future (if applicable) |
+
+Examples: merge conflicts, CI failures, migration errors, test failures, architectural decisions that needed revision.
+
+### 5. Insights and Learnings
+Capture knowledge that will help in future sessions:
+- **Technical insights** — patterns discovered, gotchas identified, architecture decisions
+- **Process insights** — workflow improvements, efficiency gains, bottlenecks identified
+- **Domain insights** — business logic clarifications, product understanding
+
+These should be concrete and actionable, not generic observations.
+
+### 6. Tickets Created
+New tickets created during the session with brief context on why they were created.
+
+### 7. Metrics
+Quick quantitative summary:
+- PRs created / merged / reviewed
+- Tickets completed / created
+- Tests added
+- Board state changes
+
+### 8. Next Up
+Prioritized list of what should be tackled next, with context on dependencies and blockers.
+
+## Format
+
+Use the template structure from existing journals in `reports/session-journals/`. Keep the tone factual and concise — this is a working document for project continuity, not a blog post.
+
+## After Writing
+
+1. Read the journal back to verify completeness
+2. Cross-reference against the git log and board state to catch anything missed
+3. Present a brief summary to the user
+
+<!-- Source: Agile Flow (https://github.com/vibeacademy/agile-flow) -->
+<!-- SPDX-License-Identifier: BUSL-1.1 -->
+<!-- Note: Memory MCP-specific validation steps from the original were dropped — Paperclip uses task/comment threading instead. -->
