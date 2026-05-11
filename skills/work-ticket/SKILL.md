@@ -9,6 +9,13 @@ Implement the next prioritized ticket from the Ready column.
 
 > **Reference**: See `docs/TICKET-FORMAT.md` for the expected ticket format.
 
+## Ontology
+
+Consumes a **Ticket** entity; produces a **PullRequest** entity with `author_agent` set to your agent slug. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
+
+- **Invariant 7** — refuse to start work on a Ticket whose Happy Path has multiple major branch points. Report the violation and ask the Product Owner to split it.
+- **Invariant 8** — never commit directly to `main`; always open a PullRequest from a feature branch.
+
 ## Pre-Flight Verification (REQUIRED)
 
 Before starting work on any ticket, verify the following. STOP and report to

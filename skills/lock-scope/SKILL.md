@@ -7,6 +7,12 @@ description: Formally lock MVP scope before development begins. Walks through a 
 
 Formalize the transition from product planning to execution by verifying and documenting that MVP scope is locked.
 
+## Ontology
+
+Locks a **Release**'s `scope_epics`. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
+
+- **Invariant 6** — once locked, adding scope requires a documented trade-off (something else must be cut). Honoring this is the whole point of the lock.
+
 ## Pre-Check
 
 Before proceeding, verify these documents exist:

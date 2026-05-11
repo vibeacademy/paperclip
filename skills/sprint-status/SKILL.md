@@ -7,6 +7,10 @@ description: Quick sprint status snapshot — counts by column, in-progress work
 
 Provide a quick status overview of the current sprint and project board.
 
+## Ontology
+
+Reads **Ticket** and **PullRequest** entities. Reports counts by `TicketStatus` (`icebox` / `backlog` / `ready` / `in_progress` / `in_review` / `done`) and PR `CiStatus` (`pending` / `passing` / `failing` / `cancelled`). See [agile-ontology](../agile-ontology/SKILL.md).
+
 ## Procedure
 
 ### 1. Board Status Snapshot

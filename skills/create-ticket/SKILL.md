@@ -7,6 +7,15 @@ description: Create a new GitHub project board ticket with the 4 Power Sections 
 
 Create a well-structured ticket on the project board with guided workflow.
 
+## Ontology
+
+Produces a **Ticket** entity (see [agile-ontology](../agile-ontology/SKILL.md)). Enforces:
+
+- **Invariant 1** — a Ticket cannot be promoted to `ready` unless all four Power Sections (Environment Context, Guardrails, Happy Path, Definition of Done) are populated with concrete content.
+- **Invariant 7** — a Ticket's Happy Path has exactly one branch. Multi-branch tickets must be split before creation.
+
+Power Sections A–D below map directly to the `Ticket.power_sections` schema fields: `environment_context`, `guardrails`, `happy_path`, `definition_of_done`.
+
 ## Pre-Flight Verification (REQUIRED)
 
 Before creating any ticket, verify the following. STOP and report to the user

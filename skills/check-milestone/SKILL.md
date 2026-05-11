@@ -7,6 +7,12 @@ description: Assess progress toward a specific roadmap milestone — counts tick
 
 Assess progress toward a specific roadmap milestone.
 
+## Ontology
+
+Reads a **Milestone** entity and its `critical_path_tickets`. Mutates `Milestone.projected_completion` and `Milestone.status` (`planned` / `on_track` / `at_risk` / `achieved` / `missed`). See [agile-ontology](../agile-ontology/SKILL.md).
+
+A Milestone is `at_risk` when `projected_completion > target_date`.
+
 ## Procedure
 
 ### 1. Milestone Overview

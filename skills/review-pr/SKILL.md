@@ -7,6 +7,12 @@ description: Review a pull request and post a written GO/NO-GO recommendation. D
 
 Review pull requests in the In Review column and provide go/no-go recommendations.
 
+## Ontology
+
+Produces a **Review** entity (`outcome` is `GO`, `NO-GO`, or `CONDITIONAL`) for a **PullRequest**. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
+
+- **Invariant 2** — independent review: your `reviewer_agent` must differ from the PullRequest's `author_agent`. Refuse to review code you wrote.
+
 ## Critical Rules
 
 1. **Never merge PRs** — human reviewer makes the final merge decision

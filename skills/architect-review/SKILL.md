@@ -7,6 +7,12 @@ description: Provide architectural guidance, design review, technology evaluatio
 
 Provide architectural guidance, review a design, or evaluate technology choices.
 
+## Ontology
+
+Produces an **ArchitectureDecision** (ADR) entity with `status` lifecycle `proposed → accepted → deprecated → superseded`. See [agile-ontology](../agile-ontology/SKILL.md).
+
+When an ADR is accepted, downstream Tickets that implement it should set `follows_from_adr` to its ID — this is how delivery tracks which architectural decisions constrain which work.
+
 ## Procedure
 
 ### 1. Understand Context

@@ -7,6 +7,13 @@ description: Perform a backlog grooming session — re-prioritize using CD3, val
 
 Perform comprehensive backlog grooming on the project board.
 
+## Ontology
+
+Reads **Ticket** and **Epic** entities; mutates `Ticket.status`. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
+
+- **Invariant 1** — only Tickets with `ready_eligible === true` (all four Power Sections populated) may be promoted to `ready`.
+- **Invariant 5** — Tickets with `size === 'XL'` must be decomposed before promotion to `ready`.
+
 ## Procedure
 
 1. **Review Product Strategy**

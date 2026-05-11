@@ -7,6 +7,12 @@ description: Evaluate a feature request for strategic fit, market value, and ROI
 
 Evaluate whether a feature should be built.
 
+## Ontology
+
+A **BUILD** outcome bridges from product strategy into the delivery ontology: the Product Owner should create one or more **Epic** entities to track execution, and each Epic's `success_criteria` should derive from this evaluation's success criteria. See [agile-ontology](../agile-ontology/SKILL.md).
+
+`DEFER` and `DECLINE` outcomes don't produce delivery entities — they're recorded as product strategy decisions.
+
 ## Procedure
 
 ### 1. Validate the Problem

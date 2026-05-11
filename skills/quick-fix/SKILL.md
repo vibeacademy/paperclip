@@ -8,6 +8,15 @@ description: Apply a small bug fix, content update, or config tweak without full
 Make a quick, targeted change (bug fix, content update, config tweak) using a
 lightweight workflow that skips ticket creation and board management.
 
+## Ontology
+
+Produces a **PullRequest** entity *without* a linked **Ticket** — this is the explicit exception to the usual Ticket → PullRequest chain. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
+
+- **Invariant 8** — feature branch + PR is still required; you never commit to `main` even for a quick fix.
+- **Invariant 9** — humans still merge. This skill stops at "PR opened."
+
+Because there is no linked Ticket, do not move any project board items.
+
 ## Pre-Flight Verification (REQUIRED)
 
 Before any work, verify the following. STOP and report if any check fails.

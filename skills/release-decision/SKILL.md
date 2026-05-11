@@ -7,6 +7,13 @@ description: Make a go/no-go decision for a release. Evaluates product quality, 
 
 Evaluate release readiness and make a go/no-go recommendation.
 
+## Ontology
+
+Produces a **Release** entity with a `ReadinessCheck` (product / market / business / communication) and `decision` of `GO`, `NO-GO`, or `CONDITIONAL_GO`. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
+
+- **Invariant 3** — `decision === 'GO'` is forbidden while `open_p0_count > 0` against any Ticket in `scope_epics`.
+- **Invariant 9** — agents never merge or deploy. This skill produces a recommendation; humans execute.
+
 ## Procedure
 
 ### 1. Product Quality Assessment

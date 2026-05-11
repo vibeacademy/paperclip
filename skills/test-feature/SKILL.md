@@ -7,6 +7,10 @@ description: Create a BDD-style test plan for a feature, optionally execute the 
 
 Create a test plan and validate a feature against specifications.
 
+## Ontology
+
+Reads a **Ticket** to source acceptance criteria (`power_sections.definition_of_done`). When test results gate a PullRequest merge or a Release, the report's `Recommendation` field aligns with `ReviewOutcome` (`GO` / `NO-GO`). See [agile-ontology](../agile-ontology/SKILL.md).
+
 ## Procedure
 
 ### 1. Analyze Specifications
