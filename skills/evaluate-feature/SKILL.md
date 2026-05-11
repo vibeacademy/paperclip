@@ -9,9 +9,9 @@ Evaluate whether a feature should be built.
 
 ## Ontology
 
-A **BUILD** outcome bridges from product strategy into the delivery ontology: the Product Owner should create one or more **Epic** entities to track execution, and each Epic's `success_criteria` should derive from this evaluation's success criteria. See [agile-ontology](../agile-ontology/SKILL.md).
+Produces a **FeatureDecision** entity for every evaluation (`outcome` of `BUILD`, `DEFER`, or `DECLINE`). On a `BUILD` outcome, the Product Owner subsequently creates one or more **Epic** entities to track execution, and each Epic's `success_criteria` derives from this evaluation. Consults prior FeatureDecisions before evaluating, so the team doesn't re-litigate settled trade-offs. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
 
-`DEFER` and `DECLINE` outcomes don't produce delivery entities — they're recorded as product strategy decisions.
+- **Invariant 13** — revisiting a `DEFER` decision creates a new FeatureDecision with `superseded_by` pointing back. Never overwrite the prior decision — the rationale matters.
 
 ## Procedure
 

@@ -9,7 +9,7 @@ Provide architectural guidance, review a design, or evaluate technology choices.
 
 ## Ontology
 
-Produces an **ArchitectureDecision** (ADR) entity with `status` lifecycle `proposed → accepted → deprecated → superseded`. See [agile-ontology](../agile-ontology/SKILL.md).
+Produces an **ArchitectureDecision** (ADR) entity with `status` lifecycle `proposed → accepted → deprecated → superseded`. Consults **PatternDiscovered** (a battle-tested pattern beats a fresh design when it fits) and **QualityTrend** (architectural choices should account for recurring quality issues) when evaluating options. When a PatternDiscovered grows load-bearing across 3+ Tickets, propose it for **graduation** to an ADR — record the resulting ADR ID in the Pattern's `graduated_to_adr` field. See [agile-ontology](../agile-ontology/SKILL.md).
 
 When an ADR is accepted, downstream Tickets that implement it should set `follows_from_adr` to its ID — this is how delivery tracks which architectural decisions constrain which work.
 

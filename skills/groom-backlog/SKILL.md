@@ -9,7 +9,7 @@ Perform comprehensive backlog grooming on the project board.
 
 ## Ontology
 
-Reads **Ticket** and **Epic** entities; mutates `Ticket.status`. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
+Reads **Ticket** and **Epic** entities; mutates `Ticket.status`. Produces a **PrioritizationLogic** entity per Epic that records *why* Tickets were ordered the way they were (CD3 scores, dependencies, rationale). Consults the prior PrioritizationLogic for the same Epic so future grooming builds on prior reasoning instead of re-deciding from scratch. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
 
 - **Invariant 1** — only Tickets with `ready_eligible === true` (all four Power Sections populated) may be promoted to `ready`.
 - **Invariant 5** — Tickets with `size === 'XL'` must be decomposed before promotion to `ready`.

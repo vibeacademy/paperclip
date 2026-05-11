@@ -1,6 +1,6 @@
 ---
 name: agile-ontology
-description: Shared vocabulary for agile delivery and team learning. Seven delivery entities (Ticket, Epic, Milestone, PullRequest, Review, Release, ArchitectureDecision) plus three knowledge entities (SessionJournal, LessonLearned, PatternDiscovered) that close the feedback loop. Defines relationships, lifecycle states, and invariants. Read at session start.
+description: Shared vocabulary for agile delivery and team memory. Seven delivery entities (Ticket, Epic, Milestone, PullRequest, Review, Release, ArchitectureDecision) plus eight memory entities across the team's four-tier memory model — working / episodic / semantic / procedural. Defines relationships, lifecycle states, and invariants. Read at session start.
 ---
 
 # Agile Delivery Ontology
@@ -237,11 +237,18 @@ Produced by `architect-review`. Tickets reference ADRs via `follows_from_adr` wh
 
 ---
 
-## The knowledge entities
+## The memory entities
 
-Three entities that close the loop. They capture what happened, what we learned, and what patterns emerged — turning the delivery layer's outputs into reusable institutional knowledge. Without these, the team rediscovers the same gotchas every session.
+The team's memory operates in four tiers (see `docs/MEMORY-ARCHITECTURE.md`):
 
-### 8. SessionJournal — what happened in this session
+- **Working memory** — your current context window. Volatile, per-session.
+- **Episodic memory** — *what happened*. SessionJournal records each session.
+- **Semantic memory** — *what we know*. Seven entity types accumulate as institutional knowledge.
+- **Procedural memory** — *how we work*. The agent instructions and skills themselves are procedural memory — you're reading procedural memory right now.
+
+The delivery entities above are artifacts of the work — they live in GitHub/Paperclip state. The memory entities below are artifacts of the team's *learning* — they accumulate over time and inform future work. There are 8: 1 episodic (SessionJournal) and 7 semantic (CompletedTicket, ReviewObservation, LessonLearned, PatternDiscovered, FeatureDecision, PrioritizationLogic, QualityTrend) — each produced by a specific skill at a specific moment.
+
+### 8. SessionJournal — what happened in this session *(episodic)*
 
 ```typescript
 export const InsightKind = z.enum(['lesson', 'pattern', 'operational']);
@@ -293,7 +300,49 @@ Produced by `log-session` at session end.
 
 ---
 
-### 9. LessonLearned — a gotcha worth remembering
+### 9. CompletedTicket — record of a shipped Ticket *(semantic)*
+
+```typescript
+export const CompletedTicket = z.object({
+  id: z.string(),                           // CompletedTicket-{issue#}
+  ticket_id: z.string(),                    // the original Ticket ID
+  pr_id: z.string(),                        // the merged PullRequest ID
+  merged_at: z.string().datetime(),
+  summary: z.string(),                      // 1-2 sentences: what got built
+  files_changed: z.array(z.string()),       // key files (not exhaustive)
+  patterns_established: z.array(z.string()).default([]),  // PatternDiscovered IDs created or reinforced
+  gotchas_encountered: z.array(z.string()).default([]),   // LessonLearned IDs created or reinforced
+  status: KnowledgeStatus,
+});
+export type CompletedTicket = z.infer<typeof CompletedTicket>;
+```
+
+Produced by `work-ticket` immediately after the human merges the PR. This is the closed-form record of how a Ticket was actually solved — future agents working similar Tickets read these first.
+
+---
+
+### 10. ReviewObservation — distilled observations from a PR review *(semantic)*
+
+```typescript
+export const ReviewObservation = z.object({
+  id: z.string(),                           // Review-PR-{pr#}
+  pr_id: z.string(),
+  ticket_id: z.string(),
+  review_id: z.string(),                    // the formal Review entity
+  reviewer_agent: z.string(),
+  outcome: ReviewOutcome,
+  observations: z.array(z.string()),        // quality patterns noted during review
+  feeds_quality_trends: z.array(z.string()).default([]),  // QualityTrend IDs this contributes to
+  status: KnowledgeStatus,
+});
+export type ReviewObservation = z.infer<typeof ReviewObservation>;
+```
+
+Produced by `review-pr` alongside the formal Review. Where `Review` is decision support for *this* PR, `ReviewObservation` is the *learning* extracted from doing the review — feeding into long-running QualityTrends.
+
+---
+
+### 11. LessonLearned — a gotcha worth remembering *(semantic)*
 
 ```typescript
 export const KnowledgeStatus = z.enum(['active', 'superseded', 'irrelevant']);
@@ -317,9 +366,11 @@ export type LessonLearned = z.infer<typeof LessonLearned>;
 
 The ID convention `lesson-{domain}-{short-name}` keeps entries scannable and dedup-friendly. Example: `lesson-auth-magic-link-callback`.
 
+Produced by `log-session` (promoted from a SessionJournal Insight with `kind: 'lesson'`) or directly by `work-ticket` when a gotcha is encountered mid-Ticket.
+
 ---
 
-### 10. PatternDiscovered — a reusable approach
+### 12. PatternDiscovered — a reusable approach *(semantic)*
 
 ```typescript
 export const PatternDiscovered = z.object({
@@ -342,6 +393,82 @@ export type PatternDiscovered = z.infer<typeof PatternDiscovered>;
 ```
 
 When a Pattern is referenced by 3+ Tickets or becomes architecturally load-bearing, propose it for **graduation** to an ArchitectureDecision via `architect-review`. The `graduated_to_adr` field records the resulting ADR.
+
+Produced by `log-session` (promoted from a SessionJournal Insight with `kind: 'pattern'`) or directly by `work-ticket` when a reusable approach emerges.
+
+---
+
+### 13. FeatureDecision — why a feature was built, deferred, or declined *(semantic)*
+
+```typescript
+export const FeatureOutcome = z.enum(['BUILD', 'DEFER', 'DECLINE']);
+
+export const FeatureDecision = z.object({
+  id: z.string(),                           // Decision-{feature-slug}
+  feature_name: z.string(),
+  outcome: FeatureOutcome,
+  rationale: z.string(),
+  market_signal: z.string(),                // customer requests, competitive pressure, market trend
+  business_case: z.string(),                // revenue / cost / ROI summary
+  strategic_fit: z.string(),                // vision alignment, target segment, platform impact
+  conditions_for_reconsideration: z.array(z.string()).default([]),  // for DEFER outcomes
+  resulting_epic_id: z.string().optional(), // when outcome is BUILD, the Epic created from this decision
+  decided_at: z.string().datetime(),
+  status: KnowledgeStatus,
+  superseded_by: z.string().optional(),
+});
+export type FeatureDecision = z.infer<typeof FeatureDecision>;
+```
+
+Produced by `evaluate-feature`. The receipt for *why* a feature was BUILD/DEFER/DECLINE — when sales (or anyone) asks again, this is the record. A `DEFER` decision can be revisited; consult before re-evaluating to avoid re-litigating settled trade-offs.
+
+---
+
+### 14. PrioritizationLogic — backlog ordering rationale *(semantic)*
+
+```typescript
+export const PrioritizationLogic = z.object({
+  id: z.string(),                           // Prioritization-{epic-slug}
+  epic_id: z.string(),
+  ordering: z.array(z.object({
+    ticket_id: z.string(),
+    rank: z.number().int().positive(),
+    cd3_score: z.number().min(0).max(10),
+    rationale: z.string(),
+  })),
+  dependencies_considered: z.array(z.string()),  // Ticket IDs whose dependencies shaped the order
+  decided_at: z.string().datetime(),
+  status: KnowledgeStatus,
+});
+export type PrioritizationLogic = z.infer<typeof PrioritizationLogic>;
+```
+
+Produced by `groom-backlog`. Captures *why* the backlog was ordered this way, so future grooming sessions build on it instead of re-deciding from scratch.
+
+---
+
+### 15. QualityTrend — recurring quality pattern over time *(semantic)*
+
+```typescript
+export const TrendDirection = z.enum(['improving', 'stable', 'declining']);
+
+export const QualityTrend = z.object({
+  id: z.string(),                           // Trend-{topic-slug}, e.g. Trend-test-coverage
+  topic: z.string(),                        // e.g. "test coverage", "PR review turnaround", "P0 escapes"
+  observations_over_time: z.array(z.object({
+    date: z.string().date(),
+    observation: z.string(),
+    review_observation_ids: z.array(z.string()).default([]),
+  })),
+  current_state: z.string(),                // narrative summary of where we are
+  direction: TrendDirection,
+  recommended_action: z.string().optional(),
+  status: KnowledgeStatus,
+});
+export type QualityTrend = z.infer<typeof QualityTrend>;
+```
+
+Produced and maintained by `review-pr` as patterns emerge across multiple ReviewObservations. A higher-order observation: not *"this PR had a problem"* but *"we keep seeing this kind of problem."*
 
 ---
 
@@ -366,28 +493,33 @@ When a Pattern is referenced by 3+ Tickets or becomes architecturally load-beari
   └────────┘   └─────────────┘    └────────┘
 ```
 
-### Knowledge loop
+### Memory loop
 
 ```
-  ┌──────┐ ┌──────┐ ┌─────────┐
-  │Ticket│ │  PR  │ │Challenge│
-  └───┬──┘ └───┬──┘ └────┬────┘
-      │       │          │
-      └───────┴──────────┘
-              │ recorded_in
-              ▼
-       ┌──────────────┐         ┌──────────────────┐
-       │SessionJournal│────────►│   LessonLearned  │
-       └──────────────┘ produces│ PatternDiscovered│
-                                └────────┬─────────┘
-                                         │ informs
-                                         ▼
-                                 ┌──────────────┐
-                                 │Future Tickets│
-                                 └──────────────┘
-```
+PRODUCTION (memory accumulates as work happens):
 
-Plus: `PatternDiscovered ── graduates_to ──► ArchitectureDecision` when a pattern becomes load-bearing.
+  PR merged           →  CompletedTicket
+  PR reviewed         →  ReviewObservation  ─── synthesizes ──► QualityTrend
+  Session ended       →  SessionJournal     ─── promotes ────► LessonLearned
+                                              └─ promotes ───► PatternDiscovered
+  Feature evaluated   →  FeatureDecision    ─── (if BUILD) ──► Epic
+  Backlog groomed     →  PrioritizationLogic
+  Mid-work gotcha     →  LessonLearned (direct, without waiting for session end)
+  Mid-work pattern    →  PatternDiscovered (direct)
+
+CONSUMPTION (memory informs future work at the start of each new effort):
+
+  create-ticket       →  consult LessonLearned (by domain), CompletedTicket (similar work)
+  work-ticket         →  consult LessonLearned, PatternDiscovered
+  architect-review    →  consult PatternDiscovered, QualityTrend
+  evaluate-feature    →  consult FeatureDecision (similar prior features)
+  groom-backlog       →  consult PrioritizationLogic (for parent Epic)
+  review-pr           →  consult QualityTrend (to spot recurring issues)
+
+GRADUATION (a memory entity becomes a delivery entity):
+
+  PatternDiscovered ── load-bearing? ──►  ArchitectureDecision
+```
 
 ### Relationship table
 
@@ -402,8 +534,18 @@ Plus: `PatternDiscovered ── graduates_to ──► ArchitectureDecision` whe
 | Release | includes | Epic | many-to-many |
 | SessionJournal | records | Ticket | one-to-many |
 | SessionJournal | records | PullRequest | one-to-many |
-| SessionJournal | produces | LessonLearned | one-to-many |
-| SessionJournal | produces | PatternDiscovered | one-to-many |
+| SessionJournal | promotes | LessonLearned | one-to-many (via Insight promotion) |
+| SessionJournal | promotes | PatternDiscovered | one-to-many (via Insight promotion) |
+| CompletedTicket | records | Ticket | one-to-one |
+| CompletedTicket | resolved_by | PullRequest | one-to-one |
+| CompletedTicket | establishes | PatternDiscovered | many-to-many |
+| CompletedTicket | encounters | LessonLearned | many-to-many |
+| ReviewObservation | follows | Review | one-to-one |
+| ReviewObservation | feeds | QualityTrend | many-to-many |
+| QualityTrend | synthesizes | ReviewObservation | one-to-many |
+| FeatureDecision | produces | Epic | one-to-one (when `outcome === 'BUILD'`) |
+| FeatureDecision | superseded_by | FeatureDecision | one-to-one (when reconsidering a DEFER) |
+| PrioritizationLogic | orders | Epic.child_tickets | one-to-one (per Epic) |
 | LessonLearned | informs | Ticket | many-to-many |
 | PatternDiscovered | informs | Ticket | many-to-many |
 | PatternDiscovered | graduates_to | ArchitectureDecision | many-to-one (optional) |
@@ -438,43 +580,64 @@ These are the rules every agent must respect. If you find yourself about to viol
 
 12. **Knowledge dedup before creation.** Before creating a new LessonLearned or PatternDiscovered, search existing entries for matching `domain` + `short_name`. If a match with `status === 'active'` exists, either reference it (set the Insight's `promoted_to` to its ID), explicitly supersede it (`superseded_by` chain), or revise the existing entry — don't add a duplicate.
 
+13. **Memory is appended, not overwritten.** Semantic memory entries have history. When updating: for *cumulative* entities (QualityTrend, PrioritizationLogic) append to their internal arrays; for entries whose meaning changes (LessonLearned, PatternDiscovered, FeatureDecision) create a new entry with `superseded_by` pointing back. Never silently overwrite or delete — the prior state is part of the institutional record.
+
 ---
 
 ## How specific skills produce or consume entities
 
 | Skill | Produces | Consumes | Invariants enforced |
 |---|---|---|---|
-| `create-ticket` | Ticket | — | 1 (Power Sections), 7 (single happy path) |
-| `groom-backlog` | — (mutates Ticket.status) | Ticket, Epic | 1, 5 |
-| `work-ticket` | PullRequest | Ticket | 7, 8 |
-| `review-pr` | Review | PullRequest, Ticket | 2 (independence) |
+| `create-ticket` | Ticket | LessonLearned (consult), CompletedTicket (consult) | 1 (Power Sections), 7 (single happy path) |
+| `groom-backlog` | PrioritizationLogic; mutates Ticket.status | Ticket, Epic, PrioritizationLogic (consult) | 1, 5 |
+| `work-ticket` | PullRequest, CompletedTicket, LessonLearned (direct), PatternDiscovered (direct) | Ticket, LessonLearned (consult), PatternDiscovered (consult) | 7, 8, 13 |
+| `review-pr` | Review, ReviewObservation, QualityTrend (synthesized) | PullRequest, Ticket, QualityTrend (consult) | 2 (independence), 13 |
 | `release-decision` | Release | Epic, Ticket | 3 (no P0), 9 |
-| `architect-review` | ArchitectureDecision | — | — |
-| `evaluate-feature` | (decision → Epic creation) | — | — |
+| `architect-review` | ArchitectureDecision | PatternDiscovered (consult), QualityTrend (consult) | — |
+| `evaluate-feature` | FeatureDecision (and Epic when BUILD) | FeatureDecision (consult) | 13 |
 | `sprint-status` | (report) | Ticket, PullRequest | — |
 | `check-milestone` | (mutates Milestone.projected) | Milestone, Ticket | — |
 | `lock-scope` | (Release.scope locked) | Epic | 6 |
 | `quick-fix` | PullRequest (no Ticket) | — | 8 — *exception:* no Ticket binding |
 | `commit` | (a commit on a branch) | — | 8 |
-| `log-session` | SessionJournal, LessonLearned, PatternDiscovered | Ticket, PullRequest, Challenge | 10, 11, 12 |
+| `log-session` | SessionJournal; promotes LessonLearned, PatternDiscovered | Ticket, PullRequest, Challenge | 10, 11, 12, 13 |
 
 ---
 
-## The knowledge feedback loop
+## The memory feedback loop
 
-The seven delivery entities describe how work flows forward. The three knowledge entities describe how the team gets smarter over time:
+The seven delivery entities describe how work flows forward. The eight memory entities describe how the team gets smarter over time. Production happens at multiple moments — not just at session end — and every skill that does real work either produces or consults memory.
 
-1. **At session end, `log-session` produces a SessionJournal** that records Tickets delivered, Challenges encountered, and raw Insights (each classified as `lesson`, `pattern`, or `operational`).
+**Production** — memory accumulates as work happens:
 
-2. **Insights classified as `lesson` or `pattern` get promoted** to LessonLearned or PatternDiscovered entities. The promotion step does a dedup check against existing entries (Invariant 12).
+| Moment | Skill | Produces |
+|---|---|---|
+| PR merged | `work-ticket` | CompletedTicket (closed-form record of the Ticket) |
+| Mid-Ticket gotcha hit | `work-ticket` | LessonLearned (directly, without waiting for log-session) |
+| Mid-Ticket reusable approach | `work-ticket` | PatternDiscovered (directly) |
+| PR reviewed | `review-pr` | ReviewObservation alongside the Review |
+| Quality pattern recurs | `review-pr` | QualityTrend (synthesizes ReviewObservations over time) |
+| Feature evaluated | `evaluate-feature` | FeatureDecision (and Epic if `outcome === 'BUILD'`) |
+| Backlog groomed | `groom-backlog` | PrioritizationLogic |
+| Session ended | `log-session` | SessionJournal; classified Insights get promoted to LessonLearned / PatternDiscovered |
 
-3. **Future sessions consult these entities** before starting work:
-   - `create-ticket` and `work-ticket` should query LessonLearned in the relevant `domain` to surface known gotchas — so Power Sections capture them upfront, or the implementation avoids them.
-   - `architect-review` should consult PatternDiscovered when evaluating options — a battle-tested pattern beats a fresh design when it fits.
+**Consumption** — memory informs future work at the start of each new effort:
 
-4. **Load-bearing patterns graduate.** When a PatternDiscovered is referenced by 3+ Tickets or starts gating multiple design decisions, propose it for graduation to an ArchitectureDecision via `architect-review`. The Pattern's `graduated_to_adr` field records the resulting ADR.
+| Skill | Consults | Purpose |
+|---|---|---|
+| `create-ticket` | LessonLearned (by domain), CompletedTicket | bake known gotchas into Guardrails; reuse approaches from similar past work |
+| `work-ticket` | LessonLearned, PatternDiscovered | avoid known traps; apply battle-tested patterns |
+| `architect-review` | PatternDiscovered, QualityTrend | a tested pattern beats a fresh design when it fits |
+| `evaluate-feature` | FeatureDecision | don't re-litigate features the team already decided on |
+| `groom-backlog` | PrioritizationLogic | build on prior ordering rationale instead of re-deciding |
+| `review-pr` | QualityTrend | spot recurring issues, not just per-PR problems |
 
-The loop turns *"we hit this bug again"* into *"we have a Lesson that prevents this bug."* That's the difference between a team that ships and a team that compounds.
+**Graduation** — when a memory entity crosses into delivery or up the strategic stack:
+
+- `PatternDiscovered → ArchitectureDecision` when load-bearing across 3+ Tickets
+- `FeatureDecision (DEFER) → FeatureDecision (BUILD)` when reconsideration conditions are met; old decision marked `superseded_by` the new one (Invariant 13)
+
+The loop turns *"we hit this bug again"* into *"we have a Lesson that prevents this bug,"* and at a higher level turns *"we keep arguing about this priority"* into *"we have PrioritizationLogic for that Epic."* That's how a team compounds.
 
 ---
 

@@ -11,10 +11,11 @@ Implement the next prioritized ticket from the Ready column.
 
 ## Ontology
 
-Consumes a **Ticket** entity; produces a **PullRequest** entity with `author_agent` set to your agent slug. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
+Consumes a **Ticket**, plus **LessonLearned** and **PatternDiscovered** (consult by Ticket domain before starting). Produces a **PullRequest** with `author_agent` set to your agent slug, plus a **CompletedTicket** record after the human merges the PR. If you hit a new gotcha mid-Ticket, create a **LessonLearned** directly — don't wait for `log-session`. If you find a reusable approach, create a **PatternDiscovered** directly. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
 
 - **Invariant 7** — refuse to start work on a Ticket whose Happy Path has multiple major branch points. Report the violation and ask the Product Owner to split it.
 - **Invariant 8** — never commit directly to `main`; always open a PullRequest from a feature branch.
+- **Invariant 13** — when revising an existing LessonLearned or PatternDiscovered, append history or set `superseded_by` on a new entry; don't overwrite.
 
 ## Pre-Flight Verification (REQUIRED)
 

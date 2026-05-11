@@ -9,7 +9,7 @@ Create a well-structured ticket on the project board with guided workflow.
 
 ## Ontology
 
-Produces a **Ticket** entity (see [agile-ontology](../agile-ontology/SKILL.md)). Enforces:
+Produces a **Ticket** entity. Consults **LessonLearned** entries matching the new Ticket's domain (so known gotchas surface in Guardrails / Section B) and **CompletedTicket** entries for similar past work (so the implementation can reuse proven approaches). See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
 
 - **Invariant 1** — a Ticket cannot be promoted to `ready` unless all four Power Sections (Environment Context, Guardrails, Happy Path, Definition of Done) are populated with concrete content.
 - **Invariant 7** — a Ticket's Happy Path has exactly one branch. Multi-branch tickets must be split before creation.

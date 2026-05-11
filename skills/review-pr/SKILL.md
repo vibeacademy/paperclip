@@ -9,9 +9,10 @@ Review pull requests in the In Review column and provide go/no-go recommendation
 
 ## Ontology
 
-Produces a **Review** entity (`outcome` is `GO`, `NO-GO`, or `CONDITIONAL`) for a **PullRequest**. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
+Produces a **Review** entity (`outcome` is `GO`, `NO-GO`, or `CONDITIONAL`) for a **PullRequest**, plus a **ReviewObservation** alongside it that distills learnings from the review. When observations recur across multiple ReviewObservations, append them to the matching **QualityTrend** entity. Consults existing QualityTrends so you spot recurring issues, not just per-PR problems. See [agile-ontology](../agile-ontology/SKILL.md). Enforces:
 
 - **Invariant 2** — independent review: your `reviewer_agent` must differ from the PullRequest's `author_agent`. Refuse to review code you wrote.
+- **Invariant 13** — append to QualityTrend's `observations_over_time` array; don't overwrite history.
 
 ## Critical Rules
 
