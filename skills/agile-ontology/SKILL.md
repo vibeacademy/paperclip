@@ -1,6 +1,6 @@
 ---
 name: agile-ontology
-description: Shared vocabulary for agile delivery — Ticket, Epic, Milestone, PullRequest, Review, Release, ArchitectureDecision — with relationships, lifecycle states, and invariants. Read at the start of any task involving these entities so your reasoning aligns with the other agents on the team.
+description: Shared vocabulary for agile delivery and team learning. Seven delivery entities (Ticket, Epic, Milestone, PullRequest, Review, Release, ArchitectureDecision) plus three knowledge entities (SessionJournal, LessonLearned, PatternDiscovered) that close the feedback loop. Defines relationships, lifecycle states, and invariants. Read at session start.
 ---
 
 # Agile Delivery Ontology
@@ -13,7 +13,9 @@ The Zod schemas in this document are presented as a precise specification of eac
 
 ---
 
-## The seven entities
+## The delivery entities
+
+Seven entities that model how work flows from idea to shipped code.
 
 ### 1. Ticket — the atomic unit of work
 
@@ -235,7 +237,117 @@ Produced by `architect-review`. Tickets reference ADRs via `follows_from_adr` wh
 
 ---
 
+## The knowledge entities
+
+Three entities that close the loop. They capture what happened, what we learned, and what patterns emerged — turning the delivery layer's outputs into reusable institutional knowledge. Without these, the team rediscovers the same gotchas every session.
+
+### 8. SessionJournal — what happened in this session
+
+```typescript
+export const InsightKind = z.enum(['lesson', 'pattern', 'operational']);
+// 'lesson'      - candidate for LessonLearned (a gotcha worth remembering)
+// 'pattern'     - candidate for PatternDiscovered (a reusable approach)
+// 'operational' - one-off observation, no further promotion
+
+export const Insight = z.object({
+  kind: InsightKind,
+  description: z.string().min(1),
+  promoted_to: z.string().optional(),       // LessonLearned or PatternDiscovered ID once promoted
+});
+
+export const Challenge = z.object({
+  challenge: z.string().min(1),
+  root_cause: z.string(),
+  mitigation: z.string(),
+  prevention: z.string().optional(),
+});
+
+export const SessionMetrics = z.object({
+  prs_created: z.number().int().nonnegative().default(0),
+  prs_merged: z.number().int().nonnegative().default(0),
+  prs_reviewed: z.number().int().nonnegative().default(0),
+  tickets_completed: z.number().int().nonnegative().default(0),
+  tickets_created: z.number().int().nonnegative().default(0),
+  tests_added: z.number().int().nonnegative().default(0),
+});
+
+export const SessionJournal = z.object({
+  id: z.string(),                           // e.g. session-2026-05-11 (or -2 suffix for second session same day)
+  date: z.string().date(),
+  summary: z.string().min(1),               // 2-3 sentence narrative
+  tickets_delivered: z.array(z.string()).default([]),
+  tickets_in_review: z.array(z.string()).default([]),
+  tickets_created: z.array(z.string()).default([]),
+  pull_requests: z.array(z.string()).default([]),
+  challenges: z.array(Challenge).default([]),
+  insights: z.array(Insight).default([]),
+  metrics: SessionMetrics,
+  next_up: z.array(z.string()).default([]), // prioritized free-form items
+});
+export type SessionJournal = z.infer<typeof SessionJournal>;
+```
+
+A SessionJournal is **immutable once written** — it's a record of a moment in time. To correct an error, create a new journal with a `-2` suffix for the same date.
+
+Produced by `log-session` at session end.
+
+---
+
+### 9. LessonLearned — a gotcha worth remembering
+
+```typescript
+export const KnowledgeStatus = z.enum(['active', 'superseded', 'irrelevant']);
+
+export const LessonLearned = z.object({
+  id: z.string(),                           // lesson-{domain}-{short-name}
+  domain: z.string().min(1),                // e.g. "auth", "deploy", "testing", "ci"
+  short_name: z.string().min(1),
+  summary: z.string().min(1),               // one-line description
+  context: z.string(),                      // what was happening when it emerged
+  root_cause: z.string(),
+  workaround: z.string(),                   // what fixed it this time
+  prevention: z.string(),                   // how to avoid it next time
+  discovered_in: z.string(),                // SessionJournal or Ticket ID
+  related_tickets: z.array(z.string()).default([]),
+  status: KnowledgeStatus,
+  superseded_by: z.string().optional(),     // newer LessonLearned ID that replaces this one
+});
+export type LessonLearned = z.infer<typeof LessonLearned>;
+```
+
+The ID convention `lesson-{domain}-{short-name}` keeps entries scannable and dedup-friendly. Example: `lesson-auth-magic-link-callback`.
+
+---
+
+### 10. PatternDiscovered — a reusable approach
+
+```typescript
+export const PatternDiscovered = z.object({
+  id: z.string(),                           // pattern-{domain}-{short-name}
+  domain: z.string().min(1),
+  short_name: z.string().min(1),
+  summary: z.string().min(1),               // one-line description
+  problem: z.string(),                      // what it solves
+  approach: z.string(),                     // the pattern itself
+  example: z.string(),                      // concrete code or scenario reference
+  when_to_apply: z.array(z.string()),
+  when_not_to_apply: z.array(z.string()).default([]),
+  discovered_in: z.string(),                // SessionJournal or Ticket ID
+  related_tickets: z.array(z.string()).default([]),
+  graduated_to_adr: z.string().optional(),  // ADR ID if this became load-bearing architecture
+  status: KnowledgeStatus,
+  superseded_by: z.string().optional(),
+});
+export type PatternDiscovered = z.infer<typeof PatternDiscovered>;
+```
+
+When a Pattern is referenced by 3+ Tickets or becomes architecturally load-bearing, propose it for **graduation** to an ArchitectureDecision via `architect-review`. The `graduated_to_adr` field records the resulting ADR.
+
+---
+
 ## Relationships
+
+### Delivery flow
 
 ```
             ┌─────────────────┐
@@ -254,6 +366,31 @@ Produced by `architect-review`. Tickets reference ADRs via `follows_from_adr` wh
   └────────┘   └─────────────┘    └────────┘
 ```
 
+### Knowledge loop
+
+```
+  ┌──────┐ ┌──────┐ ┌─────────┐
+  │Ticket│ │  PR  │ │Challenge│
+  └───┬──┘ └───┬──┘ └────┬────┘
+      │       │          │
+      └───────┴──────────┘
+              │ recorded_in
+              ▼
+       ┌──────────────┐         ┌──────────────────┐
+       │SessionJournal│────────►│   LessonLearned  │
+       └──────────────┘ produces│ PatternDiscovered│
+                                └────────┬─────────┘
+                                         │ informs
+                                         ▼
+                                 ┌──────────────┐
+                                 │Future Tickets│
+                                 └──────────────┘
+```
+
+Plus: `PatternDiscovered ── graduates_to ──► ArchitectureDecision` when a pattern becomes load-bearing.
+
+### Relationship table
+
 | From | Relationship | To | Cardinality |
 |---|---|---|---|
 | Ticket | belongs_to | Epic | many-to-one (optional) |
@@ -263,6 +400,13 @@ Produced by `architect-review`. Tickets reference ADRs via `follows_from_adr` wh
 | PullRequest | resolves | Ticket | one-to-one |
 | Review | assesses | PullRequest | many-to-one (multiple reviews allowed) |
 | Release | includes | Epic | many-to-many |
+| SessionJournal | records | Ticket | one-to-many |
+| SessionJournal | records | PullRequest | one-to-many |
+| SessionJournal | produces | LessonLearned | one-to-many |
+| SessionJournal | produces | PatternDiscovered | one-to-many |
+| LessonLearned | informs | Ticket | many-to-many |
+| PatternDiscovered | informs | Ticket | many-to-many |
+| PatternDiscovered | graduates_to | ArchitectureDecision | many-to-one (optional) |
 
 ---
 
@@ -288,6 +432,12 @@ These are the rules every agent must respect. If you find yourself about to viol
 
 9. **Humans merge, agents don't.** No agent — Engineer, PR Reviewer, or otherwise — clicks Merge or moves a Ticket to `done`. Only humans do.
 
+10. **Sessions that ship produce a journal.** Any session that merges PRs, marks Tickets `done`, or opens PullRequests must produce a SessionJournal before ending. No silent sessions — silent sessions break the feedback loop.
+
+11. **Insights must be classified.** Every entry in a SessionJournal's `insights` array must have `kind` set to `lesson`, `pattern`, or `operational`. A raw "insight" without a kind is noise — classify it or drop it.
+
+12. **Knowledge dedup before creation.** Before creating a new LessonLearned or PatternDiscovered, search existing entries for matching `domain` + `short_name`. If a match with `status === 'active'` exists, either reference it (set the Insight's `promoted_to` to its ID), explicitly supersede it (`superseded_by` chain), or revise the existing entry — don't add a duplicate.
+
 ---
 
 ## How specific skills produce or consume entities
@@ -306,6 +456,25 @@ These are the rules every agent must respect. If you find yourself about to viol
 | `lock-scope` | (Release.scope locked) | Epic | 6 |
 | `quick-fix` | PullRequest (no Ticket) | — | 8 — *exception:* no Ticket binding |
 | `commit` | (a commit on a branch) | — | 8 |
+| `log-session` | SessionJournal, LessonLearned, PatternDiscovered | Ticket, PullRequest, Challenge | 10, 11, 12 |
+
+---
+
+## The knowledge feedback loop
+
+The seven delivery entities describe how work flows forward. The three knowledge entities describe how the team gets smarter over time:
+
+1. **At session end, `log-session` produces a SessionJournal** that records Tickets delivered, Challenges encountered, and raw Insights (each classified as `lesson`, `pattern`, or `operational`).
+
+2. **Insights classified as `lesson` or `pattern` get promoted** to LessonLearned or PatternDiscovered entities. The promotion step does a dedup check against existing entries (Invariant 12).
+
+3. **Future sessions consult these entities** before starting work:
+   - `create-ticket` and `work-ticket` should query LessonLearned in the relevant `domain` to surface known gotchas — so Power Sections capture them upfront, or the implementation avoids them.
+   - `architect-review` should consult PatternDiscovered when evaluating options — a battle-tested pattern beats a fresh design when it fits.
+
+4. **Load-bearing patterns graduate.** When a PatternDiscovered is referenced by 3+ Tickets or starts gating multiple design decisions, propose it for graduation to an ArchitectureDecision via `architect-review`. The Pattern's `graduated_to_adr` field records the resulting ADR.
+
+The loop turns *"we hit this bug again"* into *"we have a Lesson that prevents this bug."* That's the difference between a team that ships and a team that compounds.
 
 ---
 
@@ -337,7 +506,7 @@ Don't silently route around invariants. They exist because past sessions discove
 
 ## Where this ontology stops
 
-This document defines **Layer 1: Delivery**. It deliberately does not define:
+This document defines **Layer 1: Delivery and learning**. It deliberately does not define:
 
 - **Layer 2: Product domain** — whatever the team is actually building (e.g., fitness studios, insurance policies, e-commerce orders). That layer is per-company and belongs in a separate skill specific to the product being shipped.
 - **Layer 3: Paperclip primitives** — `Task`, `Comment`, `Approval`, `Routine` are owned by the Paperclip control plane. Your delivery entities ride on top of those (a Paperclip Task typically *carries* a Ticket reference), but Paperclip defines them, not us.
