@@ -2,6 +2,12 @@
 
 Suggested skill attachments per agent. Apply these in each agent's **Skills** tab in the Paperclip UI. The `paperclip` skill is auto-attached to every agent — it isn't listed below.
 
+## Attached to every agent
+
+- `agile-ontology` — foundational vocabulary (Ticket, Epic, Milestone, PR, Review, Release, ADR + invariants). Every agent should read this so handoffs use shared terms and invariants get enforced consistently.
+
+Per-role attachments below build on top of `agile-ontology`.
+
 ## Product Manager
 
 Strategic decisions: vision, market fit, go/no-go.

@@ -38,6 +38,10 @@ A future `paperclip company import --from <repo>` will pull the whole package in
 
 ### `skills/` — 28 procedural skills
 
+**Foundational** (recommend on every agent):
+
+- `agile-ontology` — shared vocabulary for Ticket, Epic, Milestone, PR, Review, Release, ADR. Defines entities, relationships, and invariants. Read at the start of any task involving these concepts.
+
 **Always available** (recommend on most agents):
 
 - `commit` — Conventional Commits
